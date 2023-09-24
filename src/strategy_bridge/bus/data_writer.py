@@ -1,5 +1,6 @@
+import time
+
 import typing
-from datetime import datetime
 
 import attr
 
@@ -16,5 +17,5 @@ class DataWriter:
         data_bus.register_topic(self.write_topic_name, self.max_persisted_records_count)
 
     def write(self, content: typing.Any):
-        record = Record(content, datetime.now().timestamp())
+        record = Record(content, time.time())
         data_bus.write(self.write_topic_name, record)

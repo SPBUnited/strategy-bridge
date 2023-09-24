@@ -45,7 +45,8 @@ class MatlabController(BaseProcessor):
         robots_yellow = np.zeros(self.ROBOT_TEAM_PACKET_SIZE)
         field_info = np.zeros(self.GEOMETRY_PACKET_SIZE)
 
-        for ssl_package in self.vision_reader.read_new():
+        for ssl_record in self.vision_reader.read_new():
+            ssl_package = ssl_record.content
             geometry = ssl_package.geometry
             if geometry:
                 field_info[0] = geometry.field.field_length

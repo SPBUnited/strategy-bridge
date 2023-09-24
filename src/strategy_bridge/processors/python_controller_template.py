@@ -1,10 +1,13 @@
+import time
+
 import attr
 import numpy as np
 
-from strategy_bridge.bus import DataReader, DataWriter
+from strategy_bridge.bus import DataReader, DataWriter, Record
 from strategy_bridge.common import config
 from strategy_bridge.model.referee import RefereeCommand
 from strategy_bridge.processors import BaseProcessor
+from strategy_bridge.utils.debugger import record_debugger
 
 
 @attr.s(auto_attribs=True)
@@ -43,39 +46,45 @@ class PythonControllerTemplate(BaseProcessor):
         robots_yellow = np.zeros(self.ROBOT_TEAM_PACKET_SIZE)
         field_info = np.zeros(self.GEOMETRY_PACKET_SIZE)
 
-        for ssl_package in self.vision_reader.read_new():
-            geometry = ssl_package.geometry
-            if geometry:
-                field_info[0] = geometry.field.field_length
-                field_info[1] = geometry.field.field_width
-
-            detection = ssl_package.detection
-            if not detection:
-                continue
-
-            camera_id = detection.camera_id
-            for ball_ind, ball in enumerate(detection.balls):
-                balls[ball_ind + (camera_id - 1) * self.MAX_BALLS_IN_CAMERA] = camera_id
-                balls[ball_ind + self.MAX_BALLS_IN_FIELD + (camera_id - 1) * self.MAX_BALLS_IN_CAMERA] = ball.x
-                balls[ball_ind + 2 * self.MAX_BALLS_IN_FIELD + (camera_id - 1) * self.MAX_BALLS_IN_CAMERA] = ball.y
-
-            # TODO: Barrier states
-            for robot in detection.robots_blue:
-                robots_blue[robot.robot_id] = camera_id
-                robots_blue[robot.robot_id + self.TEAM_ROBOTS_MAX_COUNT] = robot.x
-                robots_blue[robot.robot_id + self.TEAM_ROBOTS_MAX_COUNT * 2] = robot.y
-                robots_blue[robot.robot_id + self.TEAM_ROBOTS_MAX_COUNT * 3] = robot.orientation
-
-            for robot in detection.robots_yellow:
-                robots_yellow[robot.robot_id] = camera_id
-                robots_yellow[robot.robot_id + self.TEAM_ROBOTS_MAX_COUNT] = robot.x
-                robots_yellow[robot.robot_id + self.TEAM_ROBOTS_MAX_COUNT * 2] = robot.y
-                robots_yellow[robot.robot_id + self.TEAM_ROBOTS_MAX_COUNT * 3] = robot.orientation
-
-            referee_command = self.get_last_referee_command()
-            rules = [5.0]*32*13
+        for ssl_record in self.vision_reader.read_new():
+            rules = self.process_ssl(ssl_record, field_info, balls, robots_blue, robots_yellow)
 
             import struct
             b = bytes()
             rules = b.join((struct.pack('d', rule) for rule in rules))
             self.commands_writer.write(rules)
+
+    @record_debugger
+    def process_ssl(self, ssl_record: Record, field_info, balls, robots_blue, robots_yellow):
+        ssl_package = ssl_record.content
+        geometry = ssl_package.geometry
+        if geometry:
+            field_info[0] = geometry.field.field_length
+            field_info[1] = geometry.field.field_width
+
+        detection = ssl_package.detection
+        if not detection:
+            return
+
+        camera_id = detection.camera_id
+        for ball_ind, ball in enumerate(detection.balls):
+            balls[ball_ind + (camera_id - 1) * self.MAX_BALLS_IN_CAMERA] = camera_id
+            balls[ball_ind + self.MAX_BALLS_IN_FIELD + (camera_id - 1) * self.MAX_BALLS_IN_CAMERA] = ball.x
+            balls[ball_ind + 2 * self.MAX_BALLS_IN_FIELD + (camera_id - 1) * self.MAX_BALLS_IN_CAMERA] = ball.y
+
+        # TODO: Barrier states
+        for robot in detection.robots_blue:
+            robots_blue[robot.robot_id] = camera_id
+            robots_blue[robot.robot_id + self.TEAM_ROBOTS_MAX_COUNT] = robot.x
+            robots_blue[robot.robot_id + self.TEAM_ROBOTS_MAX_COUNT * 2] = robot.y
+            robots_blue[robot.robot_id + self.TEAM_ROBOTS_MAX_COUNT * 3] = robot.orientation
+
+        for robot in detection.robots_yellow:
+            robots_yellow[robot.robot_id] = camera_id
+            robots_yellow[robot.robot_id + self.TEAM_ROBOTS_MAX_COUNT] = robot.x
+            robots_yellow[robot.robot_id + self.TEAM_ROBOTS_MAX_COUNT * 2] = robot.y
+            robots_yellow[robot.robot_id + self.TEAM_ROBOTS_MAX_COUNT * 3] = robot.orientation
+
+        referee_command = self.get_last_referee_command()
+        rules = [5.0] * 32 * 13
+        return rules

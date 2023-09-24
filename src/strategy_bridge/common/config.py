@@ -23,13 +23,16 @@ ROBOT_COMMANDS_TOPIC = "robot-commands"
 
 LOG_FILE_NAME = "strategy-bridge.log"
 CONFIG_FILE_NAME = "bridge.yml"
+DEBUGGER_LOGGER_NAME = "debugger"
+DEBUGGER_LOG_FILE_NAME = "debugger.log"
 
 LOG_PATH = os.path.join(PROJECT_ROOT, "logs")
+DEBUG_PATH = os.path.join(PROJECT_ROOT, "debug")
 CONFIG_PATH = os.path.join(PROJECT_ROOT, "conf")
 MATLAB_SCRIPTS_PATH = os.path.join(PROJECT_ROOT, "..", "MLscripts_func_main")
 
 
-def init_logging(log_dir=LOG_PATH, log_file_name=LOG_FILE_NAME):
+def init_logging(log_dir=LOG_PATH, log_file_name=LOG_FILE_NAME, debugger_log_file_name=DEBUGGER_LOG_FILE_NAME):
     logging_format = "[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s"
     formatter = logging.Formatter(logging_format)
 
@@ -44,3 +47,11 @@ def init_logging(log_dir=LOG_PATH, log_file_name=LOG_FILE_NAME):
     logging.getLogger().addHandler(console_handler)
     logging.getLogger().addHandler(file_handler)
     logging.getLogger().setLevel(logging.INFO)
+
+    file_handler = TimedRotatingFileHandler(filename=os.path.join(log_dir, debugger_log_file_name), when='W0')
+    file_handler.setLevel(logging.INFO)
+    file_handler.setFormatter(formatter)
+
+    logging.getLogger(DEBUGGER_LOGGER_NAME).propagate = False
+    logging.getLogger(DEBUGGER_LOGGER_NAME).addHandler(file_handler)
+    logging.getLogger(DEBUGGER_LOGGER_NAME).setLevel(logging.INFO)

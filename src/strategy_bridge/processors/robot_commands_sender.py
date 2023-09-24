@@ -19,4 +19,4 @@ class RobotCommandsSender(BaseProcessor):
     async def process(self):
         commands = self.commands_reader.read_new()
         for command in commands:
-            self.socket.send(command)
+            self.socket.send(command.content)

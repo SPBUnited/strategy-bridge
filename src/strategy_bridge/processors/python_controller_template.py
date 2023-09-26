@@ -1,13 +1,13 @@
-import time
-
+import struct
 import attr
 import numpy as np
 
-from strategy_bridge.bus import DataReader, DataWriter, Record
+from strategy_bridge.bus import DataReader, DataWriter, Record, DataBus
 from strategy_bridge.common import config
 from strategy_bridge.model.referee import RefereeCommand
 from strategy_bridge.processors import BaseProcessor
-from strategy_bridge.utils.debugger import record_debugger
+from strategy_bridge.utils.debugger import record_debugger, debugger
+from strategy_bridge.pb.messages_robocup_ssl_wrapper_pb2 import SSL_WrapperPacket
 
 
 @attr.s(auto_attribs=True)
@@ -15,8 +15,8 @@ class PythonControllerTemplate(BaseProcessor):
 
     max_commands_to_persist: int = 20
 
-    vision_reader: DataReader = attr.ib(init=False, default=DataReader(config.VISION_DETECTIONS_TOPIC))
-    referee_reader: DataReader = attr.ib(init=False, default=DataReader(config.REFEREE_COMMANDS_TOPIC))
+    vision_reader: DataReader = attr.ib(init=False)
+    referee_reader: DataReader = attr.ib(init=False)
     commands_writer: DataWriter = attr.ib(init=False)
 
     CAMERAS_COUNT: int = 4
@@ -31,16 +31,22 @@ class PythonControllerTemplate(BaseProcessor):
 
     GEOMETRY_PACKET_SIZE: int = 2
 
-    def __attrs_post_init__(self):
-        self.commands_writer = DataWriter(config.ROBOT_COMMANDS_TOPIC, self.max_commands_to_persist)
+    def initialize(self, data_bus: DataBus) -> None:
+        super(PythonControllerTemplate, self).initialize(data_bus)
+        self.vision_reader = DataReader(self.data_bus, config.VISION_DETECTIONS_TOPIC)
+        self.referee_reader = DataReader(self.data_bus, config.REFEREE_COMMANDS_TOPIC)
+        self.commands_writer = DataWriter(self.data_bus, config.ROBOT_COMMANDS_TOPIC, self.max_commands_to_persist)
+        self._ssl_converter = SSL_WrapperPacket()
+
 
     def get_last_referee_command(self) -> RefereeCommand:
         referee_commands = self.referee_reader.read_new()
         if referee_commands:
-            return referee_commands[-1]
+            return referee_commands[-1].content
         return RefereeCommand(0, 0, False)
 
-    async def process(self) -> None:
+    @debugger
+    def process(self) -> None:
         balls = np.zeros(self.BALL_PACKET_SIZE * self.MAX_BALLS_IN_FIELD)
         robots_blue = np.zeros(self.ROBOT_TEAM_PACKET_SIZE)
         robots_yellow = np.zeros(self.ROBOT_TEAM_PACKET_SIZE)
@@ -48,8 +54,6 @@ class PythonControllerTemplate(BaseProcessor):
 
         for ssl_record in self.vision_reader.read_new():
             rules = self.process_ssl(ssl_record, field_info, balls, robots_blue, robots_yellow)
-
-            import struct
             b = bytes()
             rules = b.join((struct.pack('d', rule) for rule in rules))
             self.commands_writer.write(rules)
@@ -57,6 +61,7 @@ class PythonControllerTemplate(BaseProcessor):
     @record_debugger
     def process_ssl(self, ssl_record: Record, field_info, balls, robots_blue, robots_yellow):
         ssl_package = ssl_record.content
+        ssl_package = self._ssl_converter.FromString(ssl_package)
         geometry = ssl_package.geometry
         if geometry:
             field_info[0] = geometry.field.field_length

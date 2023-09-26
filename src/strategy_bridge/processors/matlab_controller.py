@@ -1,7 +1,7 @@
 import attr
 import numpy as np
 
-from strategy_bridge.bus import DataReader, DataWriter
+from strategy_bridge.bus import DataReader, DataWriter, DataBus
 from strategy_bridge.common import config
 from strategy_bridge.matlab.engine import matlab_engine
 from strategy_bridge.model.referee import RefereeCommand
@@ -9,13 +9,16 @@ from strategy_bridge.processors import BaseProcessor
 
 
 # TODO: Refactor this class and corresponding matlab scripts
+from strategy_bridge.utils.debugger import debugger
+
+
 @attr.s(auto_attribs=True)
 class MatlabController(BaseProcessor):
 
     max_commands_to_persist: int = 20
 
-    vision_reader: DataReader = attr.ib(init=False, default=DataReader(config.VISION_DETECTIONS_TOPIC))
-    referee_reader: DataReader = attr.ib(init=False, default=DataReader(config.REFEREE_COMMANDS_TOPIC))
+    vision_reader: DataReader = attr.ib(init=False)
+    referee_reader: DataReader = attr.ib(init=False)
     commands_writer: DataWriter = attr.ib(init=False)
 
     CAMERAS_COUNT: int = 4
@@ -30,16 +33,20 @@ class MatlabController(BaseProcessor):
 
     GEOMETRY_PACKET_SIZE: int = 2
 
-    def __attrs_post_init__(self):
-        self.commands_writer = DataWriter(config.ROBOT_COMMANDS_TOPIC, self.max_commands_to_persist)
+    def initialize(self, data_bus: DataBus) -> None:
+        super(MatlabController, self).initialize(data_bus)
+        self.vision_reader = DataReader(self.data_bus, config.VISION_DETECTIONS_TOPIC)
+        self.referee_reader = DataReader(self.data_bus, config.REFEREE_COMMANDS_TOPIC)
+        self.commands_writer = DataWriter(self.data_bus, config.ROBOT_COMMANDS_TOPIC, self.max_commands_to_persist)
 
     def get_last_referee_command(self) -> RefereeCommand:
         referee_commands = self.referee_reader.read_new()
         if referee_commands:
-            return referee_commands[-1]
+            return referee_commands[-1].content
         return RefereeCommand(0, 0, False)
 
-    async def process(self) -> None:
+    @debugger
+    def process(self) -> None:
         balls = np.zeros(self.BALL_PACKET_SIZE * self.MAX_BALLS_IN_FIELD)
         robots_blue = np.zeros(self.ROBOT_TEAM_PACKET_SIZE)
         robots_yellow = np.zeros(self.ROBOT_TEAM_PACKET_SIZE)

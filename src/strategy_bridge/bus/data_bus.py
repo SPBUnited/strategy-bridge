@@ -31,6 +31,3 @@ class DataBus:
         records = self.read_all(topic_name)
         valid_records = [r for r in records if r.timestamp > timestamp]
         return valid_records
-
-
-data_bus = DataBus()

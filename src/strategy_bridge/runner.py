@@ -16,14 +16,14 @@ class BridgeManager(BaseManager):
 
 @attr.s(auto_attribs=True, kw_only=True)
 class Runner:
-    processor_classes: typing.List[BaseProcessor]
+    processors: typing.List[BaseProcessor]
 
     def run(self):
         BridgeManager.register('data_bus', DataBus)
         with BridgeManager() as manager:
             data_bus = manager.data_bus()
             processes = [
-                Process(target=self.run_processor, args=(processor, data_bus)) for processor in self.processor_classes
+                Process(target=self.run_processor, args=(processor, data_bus)) for processor in self.processors
             ]
             for process in processes:
                 process.start()

@@ -17,5 +17,5 @@ if __name__ == '__main__':
         RobotCommandsSender()
     ]
 
-    runner = Runner(processor_classes=processors)
+    runner = Runner(processors=processors)
     runner.run()

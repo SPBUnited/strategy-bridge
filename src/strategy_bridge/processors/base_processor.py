@@ -13,6 +13,7 @@ from strategy_bridge.bus import DataBus
 class BaseProcessor(ABC):
 
     processing_pause: typing.Optional[float] = 1
+    reduce_pause_on_process_time: bool = False
     should_debug: bool = False
     logger: logging.Logger = logging.getLogger(__name__)
     data_bus: DataBus = attr.ib(init=False)
@@ -26,14 +27,26 @@ class BaseProcessor(ABC):
         if not self.is_initialized:
             raise Exception("Processor should be initialized first")
         self.logger.info(f"Running processor: {self.__class__.__name__}")
-        while True:
-            try:
+        try:
+            while True:
+                before = time.time()
                 self.process()
+                after = time.time()
+                took = after - before
                 if self.processing_pause:
-                    time.sleep(self.processing_pause)
-            except KeyboardInterrupt:
-                self.logger.warning(f"Interrupted {self.__class__.__name__}. Finalizing processing")
-                self.finalize()
+                    pause = self.processing_pause
+                    if self.reduce_pause_on_process_time:
+                        pause -= took
+                        if pause < 0:
+                            self.logger.warning(
+                                f"Processor {self.__class__.__name__} took {took:.2f} seconds "
+                                f"with expected pause between runs for {self.processing_pause} seconds"
+                            )
+                            pause = 0
+                    time.sleep(pause)
+        except KeyboardInterrupt:
+            self.logger.warning(f"Interrupted {self.__class__.__name__}. Finalizing processing")
+            self.finalize()
 
     @abstractmethod
     def process(self) -> None:

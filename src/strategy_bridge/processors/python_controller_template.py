@@ -55,7 +55,7 @@ class PythonControllerTemplate(BaseProcessor):
 
         feedback = self.box_feedback_reader.read_new()
         if feedback:
-            print(feedback)
+            print(feedback[-1])
 
         for ssl_record in self.vision_reader.read_new():
             rules = self.process_ssl(ssl_record, field_info, balls, robots_blue, robots_yellow)

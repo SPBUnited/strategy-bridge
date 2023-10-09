@@ -34,6 +34,7 @@ class PythonControllerTemplate(BaseProcessor):
     def initialize(self, data_bus: DataBus) -> None:
         super(PythonControllerTemplate, self).initialize(data_bus)
         self.vision_reader = DataReader(self.data_bus, config.VISION_DETECTIONS_TOPIC)
+        self.box_feedback_reader = DataReader(self.data_bus, config.BOX_FEEDBACK_TOPIC)
         self.referee_reader = DataReader(self.data_bus, config.REFEREE_COMMANDS_TOPIC)
         self.commands_writer = DataWriter(self.data_bus, config.ROBOT_COMMANDS_TOPIC, self.max_commands_to_persist)
         self._ssl_converter = SSL_WrapperPacket()
@@ -51,6 +52,10 @@ class PythonControllerTemplate(BaseProcessor):
         robots_blue = np.zeros(self.ROBOT_TEAM_PACKET_SIZE)
         robots_yellow = np.zeros(self.ROBOT_TEAM_PACKET_SIZE)
         field_info = np.zeros(self.GEOMETRY_PACKET_SIZE)
+
+        feedback = self.box_feedback_reader.read_new()
+        if feedback:
+            print(feedback)
 
         for ssl_record in self.vision_reader.read_new():
             rules = self.process_ssl(ssl_record, field_info, balls, robots_blue, robots_yellow)

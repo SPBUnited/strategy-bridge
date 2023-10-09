@@ -1,5 +1,6 @@
 from strategy_bridge.common import config
 from strategy_bridge.processors import VisionDetectionsCollector, RobotCommandsSender
+from strategy_bridge.processors.box_feedback_collector import BoxFeedbackCollector
 from strategy_bridge.processors.python_controller_template import PythonControllerTemplate
 from strategy_bridge.processors.referee_commands_collector import RefereeCommandsCollector
 from strategy_bridge.runner import Runner
@@ -14,7 +15,8 @@ if __name__ == '__main__':
         VisionDetectionsCollector(),
         RefereeCommandsCollector(),
         PythonControllerTemplate(),
-        RobotCommandsSender()
+        RobotCommandsSender(),
+        BoxFeedbackCollector()
     ]
 
     runner = Runner(processors=processors)

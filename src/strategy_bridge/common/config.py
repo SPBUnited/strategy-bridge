@@ -20,6 +20,7 @@ COMMANDS_PUBLISH_PORT = 5667
 VISION_DETECTIONS_TOPIC = "vision-detections"
 REFEREE_COMMANDS_TOPIC = "referee-commands"
 ROBOT_COMMANDS_TOPIC = "robot-commands"
+BOX_FEEDBACK_TOPIC = "box-feedback"
 
 LOG_FILE_NAME = "strategy-bridge.log"
 CONFIG_FILE_NAME = "bridge.yml"

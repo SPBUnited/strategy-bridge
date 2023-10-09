@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "strategy-bridge"
-version = "0.2.0"
+version = "0.3.0"
 description = ""
 authors = [
     "Mikhail Lipkovich <lipkovich.mikhail@gmail.com>"
@@ -19,6 +19,7 @@ numpy = "^1.26.0"
 protobuf = "3.19.1"
 pyzmq = "^25.1.1"
 matlab = { version = "^0.1", optional = true }
+websocket-client = "^1.6.4"
 
 
 [tool.poetry.group.dev.dependencies]

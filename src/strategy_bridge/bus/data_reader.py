@@ -13,10 +13,18 @@ class DataReader:
     last_read_message_timestamp: float = 0
 
     def read_new(self) -> typing.List[Record]:
-        records = self.data_bus.read_from_timestamp(self.read_topic_name, self.last_read_message_timestamp)
+        records = self.data_bus.read_from_timestamp(
+            self.read_topic_name, self.last_read_message_timestamp
+        )
         if records:
             self.last_read_message_timestamp = records[-1].timestamp
         return records
+
+    def read_last(self) -> typing.Optional[Record]:
+        record = self.data_bus.read_top(self.read_topic_name, 1)
+        if record:
+            return record[0]
+        return None
 
     def read_all(self) -> typing.List[Record]:
         return self.data_bus.read_all(self.read_topic_name)
